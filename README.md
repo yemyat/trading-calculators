@@ -4,4 +4,4 @@
 `pip install streamlit`
 
 # How to run
-streamlit run <path to python file>
+streamlit run `<path to python file>`
