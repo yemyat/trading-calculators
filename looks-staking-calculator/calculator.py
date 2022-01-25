@@ -1,98 +1,134 @@
+from tracemalloc import start
 import streamlit as st
 import numpy as np
 import numpy_financial as npf
 import pandas as pd
+from datetime import date
+
 
 # Variables
 investment_timeline_options = ('1 day', '7 days', '14 days', '30 days', '60 days', '90 days', '6 months', '12 months', '18 months', '24 months', '36 months')
 investment_timeline_options_in_days = (1.0, 7.0, 14.0, 30.0, 60.0, 90.0, 180.0, 365.0, 547.0, 730.0, 1095.0)
+interest_rate = {}
 accumulated_returns = 0.0
 
+def calculate_rewards_schedule(start_date, starting_looks_apr, starting_weth_apr):
+  genesis_date = date(2022, 1, 11)
+  delta_days = (start_date - genesis_date).days
+  variable_looks_interest_rate = []
+  variable_weth_interest_rate = []
+  for i in range(726):
+    if i >= 0 and i <= 30 and delta_days <= i:
+      variable_looks_interest_rate.append(starting_looks_apr)
+      variable_weth_interest_rate.append(starting_weth_apr)
+    elif i > 30 and i <= 30+90 and delta_days <= i:
+      variable_looks_interest_rate.append(starting_looks_apr * (1-0.525))
+      variable_weth_interest_rate.append(starting_weth_apr * (1-0.525))
+    elif i > 30+90 and i <= 30+90+240 and delta_days <= i:
+      variable_looks_interest_rate.append(starting_looks_apr * (1-0.8125))
+      variable_weth_interest_rate.append(starting_weth_apr * (1-0.8125))
+    elif i > 30+90+240 and i <= 30+90+240+361 and delta_days <= i:
+      variable_looks_interest_rate.append(starting_looks_apr * (1-0.9))
+      variable_weth_interest_rate.append(starting_weth_apr * (1-0.9))
+  
+  return {"LOOKS": variable_looks_interest_rate, "WETH": variable_weth_interest_rate}
 
 def daily_compute_looks():
-  global accumulated_returns
   total_days = investment_timeline_options_in_days[investment_timeline_options.index(investment_timeline)]
 
   current_looks_position_size = capital / current_looks_price
-  daily_interest_rate = (looks_apr/100)/365
-  future_looks_position_size = npf.fv(daily_interest_rate, total_days, 0, -current_looks_position_size)
-  rewards_looks_position_size = future_looks_position_size - current_looks_position_size
-  looks_growth = get_change(future_looks_position_size, current_looks_position_size)
-  accumulated_returns += future_looks_position_size * future_looks_price
- 
-  # Render
-  st.header("LOOKS Return")
-  st.text("Calculating the amount of LOOKS rewards that you will get from staking")
-  col1, col2, col3 = st.columns(3)
-  col1.metric(label="Principal", value=str(round(current_looks_position_size,2)) + " LOOKS")
-  col2.metric(label="Rewards", value=str(round(rewards_looks_position_size,2)) + " LOOKS")
-  col3.metric(label="Total", value=str(round(future_looks_position_size,2)) + " LOOKS", delta=str(looks_growth) + "%")
 
-  st.subheader("LOOKS Return in $")
-  st.text("Calculating the value of total LOOKS if the price of LOOKS is at $" + str(future_looks_price))
-  col1, col2, col3 = st.columns(3)
-  col1.metric(label="Principal", value="$"+str(round(current_looks_position_size * current_looks_price,2)))
-  col2.metric(label="Rewards", value="$"+str(round(rewards_looks_position_size * future_looks_price,2)))
-  col3.metric(label="Total", value="$"+str(round(future_looks_position_size * future_looks_price,2)), delta=str(looks_growth) + "%")
-
-  calculate_daily_return("LOOKS", daily_interest_rate, total_days, current_looks_position_size, future_looks_price)
+  calculate_daily_return("LOOKS", total_days, current_looks_position_size, current_looks_price, future_looks_price)
 
 def daily_compute_weth():
-  global accumulated_returns
   total_days = investment_timeline_options_in_days[investment_timeline_options.index(investment_timeline)]
 
-  daily_interest_rate = (weth_apr/100)/365
   current_weth_position_size = capital / current_weth_price
-  # We need to subtract this with current weth position size because we are starting from 0 WETH in our wallet but the rewards are calculated as if we had WETH capital (rewards calculated based on LOOKS)
-  future_weth_position_size = npf.fv(daily_interest_rate, total_days, 0, -current_weth_position_size) - current_weth_position_size
-  rewards_weth_position_size = future_weth_position_size
-  weth_growth = get_change(future_weth_position_size, current_weth_position_size)
-  accumulated_returns += future_weth_position_size * future_weth_price
 
-  # Render
-  st.header("WETH Return")
-  st.text("Calculating the amount of WETH rewards that you will get from staking")
-  col1, col2, col3 = st.columns(3)
-  col1.metric(label="Principal", value="0 WETH")
-  col2.metric(label="Rewards", value=str(round(rewards_weth_position_size,2)) + " WETH")
-  col3.metric(label="Total", value=str(round(future_weth_position_size,2)) + " WETH", delta=str(weth_growth) + "%")
+  calculate_daily_return("WETH", total_days, current_weth_position_size, current_weth_price, future_weth_price)
 
-  st.subheader("WETH Return in $")
-  st.text("Calculating the value of total WETH if the price of WETH is at $" + str(future_looks_price))
-  col1, col2, col3 = st.columns(3)
-  col1.metric(label="Principal", value="$0")
-  col2.metric(label="Rewards", value="$"+str(round(rewards_weth_position_size * future_weth_price,2)))
-  col3.metric(label="Total", value="$"+str(round(future_weth_position_size * future_weth_price,2)), delta=str(weth_growth) + "%")
+def calculate_daily_return(symbol, total_days, starting_capital, current_price, future_price):
+  global accumulated_returns
 
-  calculate_daily_return("WETH", daily_interest_rate, total_days, current_weth_position_size, future_weth_price)
-
-def calculate_daily_return(symbol, daily_interest_rate, total_days, starting_capital, future_price):
   interest = []
   total = []
-  total_in_dolalrs = []
+  total_in_dollars = []
   principal = []
+  ir = []
   
-  # Calculate LOOKS return
   for i in range(int(total_days + 1)):
-    period_position_size = npf.fv(daily_interest_rate, i, 0, -starting_capital)
+    daily_interest_rate = interest_rate[symbol][i]/100/365
+    ir.append(daily_interest_rate * 100 * 365)
+
+    if i == 0:
+      period_position_size = starting_capital
+    else:
+      period_position_size += total[i-1]*daily_interest_rate
+    
     if symbol == "LOOKS":
       total.append(period_position_size) 
-      total_in_dolalrs.append(period_position_size * future_price)
+      total_in_dollars.append(period_position_size * future_price)
 
-      interest_looks_position_size = 0 if i == 0 else period_position_size - total[i-1]
+      interest_looks_position_size = 0 if i == 0 else period_position_size - starting_capital
       interest.append(interest_looks_position_size)
 
       principal_position_size = starting_capital if i == 0 else total[i-1]
       principal.append(principal_position_size)
     else:
-      total.append(period_position_size - starting_capital) 
-      total_in_dolalrs.append((period_position_size - starting_capital) * future_price)
+      total.append(period_position_size)
+      total_in_dollars.append(period_position_size * future_price)
 
-      interest_looks_position_size = 0 if i == 0 else period_position_size - total[i-1] - starting_capital
+      interest_looks_position_size = 0 if i == 0 else period_position_size - starting_capital
       interest.append(interest_looks_position_size)
 
-      principal_position_size = 0 if i == 0 else total[i-1]
+      principal_position_size = starting_capital if i == 0 else total[i-1]
       principal.append(principal_position_size)
+
+  if symbol == "LOOKS":
+    # Render
+    st.header("LOOKS Return")
+    st.text("Calculating the amount of LOOKS rewards that you will get from staking")
+    col1, col2, col3 = st.columns(3)
+    col1.metric(label="Principal", value=str(round(total[0],2)) + " LOOKS")
+    col2.metric(label="Rewards", value=str(round(interest[len(total)-1],2)) + " LOOKS")
+    col3.metric(label="Total", value=str(round(total[len(total)-1],2)) + " LOOKS")
+
+    st.subheader("LOOKS Return in $")
+    st.text("Calculating the value of total LOOKS if the price of LOOKS is at $" + str(future_price))
+    col1, col2, col3 = st.columns(3)
+    col1.metric(label="Principal", value="$"+str(round(total[0] * current_price,2)))
+    col2.metric(label="Rewards", value="$"+str(round(interest[len(total)-1] * future_price,2)))
+    col3.metric(label="Total", value="$"+str(round(total[len(total)-1] * future_price,2)))
+
+    accumulated_returns += total[len(total)-1] * future_price
+  else:
+    # Subtract the capital from total because we are starting with 0 WETH
+    for i in range(int(total_days + 1)):
+      if i == 0:
+        total[i] = 0
+        total_in_dollars[i] = 0
+        principal[i] = 0
+      else:
+        total[i] = total[i] - starting_capital
+        total_in_dollars[i] = total_in_dollars[i] - (starting_capital*future_price)
+        principal[i] = principal[i] - starting_capital
+    
+    # Render
+    st.header("WETH Return")
+    st.text("Calculating the amount of WETH rewards that you will get from staking")
+    col1, col2, col3 = st.columns(3)
+    col1.metric(label="Principal", value="0 WETH")
+    col2.metric(label="Rewards", value=str(round(interest[len(total)-1],2)) + " WETH")
+    col3.metric(label="Total", value=str(round(total[len(total)-1],2)) + " WETH")
+
+    st.subheader("WETH Return in $")
+    st.text("Calculating the value of total LOOKS if the price of WETH is at $" + str(future_price))
+    col1, col2, col3 = st.columns(3)
+    col1.metric(label="Principal", value="$0")
+    col2.metric(label="Rewards", value="$"+str(round(interest[len(total)-1] * future_price,2)))
+    col3.metric(label="Total", value="$"+str(round(total[len(total)-1] * future_price,2)))
+
+    accumulated_returns += total[len(total)-1] * future_price
 
   st.subheader(symbol + " rewards distribution")
   looks_df = pd.DataFrame(
@@ -100,11 +136,12 @@ def calculate_daily_return(symbol, daily_interest_rate, total_days, starting_cap
       "Principal (" + symbol + ")": principal,
       "Interest (" + symbol + ")": interest,
       "Total (" + symbol + ")": total,
-      "Total (USD)": total_in_dolalrs
+      "Total (USD)": total_in_dollars,
+      "APR (%)": ir
     }
   )
   st.dataframe(looks_df)
-  st.line_chart(data=pd.DataFrame({"Total (USD)": total_in_dolalrs}), use_container_width=True)
+  st.line_chart(data=pd.DataFrame({"Total (USD)": total_in_dollars}), use_container_width=True)
 
 
 def get_change(current, previous):
@@ -132,16 +169,18 @@ st.sidebar.text("This should be the price at the end of your investment period")
 future_looks_price =  st.sidebar.number_input('Future Price of LOOKS')
 future_weth_price =  st.sidebar.number_input('Future Price of WETH')
 
-
 # User Inputs
 st.sidebar.subheader("Investment")
 capital = st.sidebar.number_input(label='Your Initial Capital ($)', value=1000.0)
 investment_timeline = st.sidebar.selectbox('Investment Period (Days)', investment_timeline_options)
 
 if st.sidebar.button("Calculate"):
+  interest_rate = calculate_rewards_schedule(date.today(), looks_apr, weth_apr)
   daily_compute_looks()
   daily_compute_weth()
-  st.header("Returns (LOOK + WETH)")
-  col1, col2 = st.columns(2)
-  col1.metric(label="Accumulated Returns (in USD)", value="$"+ str(round(accumulated_returns,2)))
-  col2.metric(label="Average Daily Returns (in USD)", value="$"+str(round((accumulated_returns-capital)/investment_timeline_options_in_days[investment_timeline_options.index(investment_timeline)],2)))
+  st.header("Profit (LOOK + WETH)")
+  col1, col2, col3, col4 = st.columns(4)
+  col1.metric(label="Balance (in USD)", value="$"+str(round(accumulated_returns, 2)))
+  col2.metric(label="Accumulated Profit (in USD)", value="$"+ str(round(accumulated_returns-capital,2)))
+  col3.metric(label="Average Daily Profit (in USD)", value="$"+str(round((accumulated_returns-capital)/investment_timeline_options_in_days[investment_timeline_options.index(investment_timeline)],2)))
+  col4.metric(label="Breakeven in", value=str(round(capital/(accumulated_returns/investment_timeline_options_in_days[investment_timeline_options.index(investment_timeline)]),0)) + " days")
