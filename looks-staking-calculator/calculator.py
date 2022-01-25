@@ -11,6 +11,7 @@ investment_timeline_options = ('1 day', '7 days', '14 days', '30 days', '60 days
 investment_timeline_options_in_days = (1.0, 7.0, 14.0, 30.0, 60.0, 90.0, 180.0, 365.0, 547.0, 730.0, 1095.0)
 interest_rate = {}
 accumulated_returns = 0.0
+accumulated_interest = 0.0
 
 def calculate_rewards_schedule(start_date, starting_looks_apr, starting_weth_apr):
   genesis_date = date(2022, 1, 11)
@@ -49,6 +50,7 @@ def daily_compute_weth():
 
 def calculate_daily_return(symbol, total_days, starting_capital, current_price, future_price):
   global accumulated_returns
+  global accumulated_interest
 
   interest = []
   total = []
@@ -101,6 +103,7 @@ def calculate_daily_return(symbol, total_days, starting_capital, current_price, 
     col3.metric(label="Total", value="$"+str(round(total[len(total)-1] * future_price,2)))
 
     accumulated_returns += total[len(total)-1] * future_price
+    accumulated_interest += interest[len(total)-1] * future_price
   else:
     # Subtract the capital from total because we are starting with 0 WETH
     for i in range(int(total_days + 1)):
@@ -129,6 +132,7 @@ def calculate_daily_return(symbol, total_days, starting_capital, current_price, 
     col3.metric(label="Total", value="$"+str(round(total[len(total)-1] * future_price,2)))
 
     accumulated_returns += total[len(total)-1] * future_price
+    accumulated_interest += interest[len(total)-1] * future_price
 
   st.subheader(symbol + " rewards distribution")
   looks_df = pd.DataFrame(
@@ -184,7 +188,9 @@ if st.sidebar.button("Calculate"):
   daily_compute_weth()
   st.header("Profit (LOOK + WETH)")
   col1, col2, col3, col4 = st.columns(4)
+
+  total_days = investment_timeline_options_in_days[investment_timeline_options.index(investment_timeline)]
   col1.metric(label="Balance (in USD)", value="$"+str(round(accumulated_returns, 2)))
-  col2.metric(label="Accumulated Profit (in USD)", value="$"+ str(round(accumulated_returns-capital,2)))
-  col3.metric(label="Average Daily Profit (in USD)", value="$"+str(round((accumulated_returns-capital)/investment_timeline_options_in_days[investment_timeline_options.index(investment_timeline)],2)))
-  col4.metric(label="Breakeven in", value=str(round(capital/(accumulated_returns/investment_timeline_options_in_days[investment_timeline_options.index(investment_timeline)]),0)) + " days")
+  col2.metric(label="Profit (in USD)", value="$"+ str(round(accumulated_returns-capital,2)))
+  col3.metric(label="Average Daily Interest (in USD)", value="$"+str(round(accumulated_interest/total_days, 2)))
+  col4.metric(label="No of Days to require enough profit to cover capital", value=str(round(capital/(accumulated_interest/total_days),0)) + " days")
