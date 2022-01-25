@@ -4,8 +4,8 @@ import numpy_financial as npf
 import pandas as pd
 
 # Variables
-investment_timeline_options = ('30 days', '60 days', '90 days', '6 months', '12 months', '18 months', '24 months', '36 months')
-investment_timeline_options_in_days = (30.0, 60.0, 90.0, 180.0, 365.0, 547.0, 730.0, 1095.0)
+investment_timeline_options = ('1 day', '7 days', '14 days', '30 days', '60 days', '90 days', '6 months', '12 months', '18 months', '24 months', '36 months')
+investment_timeline_options_in_days = (1.0, 7.0, 14.0, 30.0, 60.0, 90.0, 180.0, 365.0, 547.0, 730.0, 1095.0)
 accumulated_returns = 0.0
 
 
@@ -43,11 +43,11 @@ def daily_compute_weth():
 
   daily_interest_rate = (weth_apr/100)/365
   current_weth_position_size = capital / current_weth_price
-  future_weth_position_size = npf.fv(daily_interest_rate, total_days, 0, -current_weth_position_size)
-  rewards_weth_position_size = future_weth_position_size - current_weth_position_size
+  # We need to subtract this with current weth position size because we are starting from 0 WETH in our wallet but the rewards are calculated as if we had WETH capital (rewards calculated based on LOOKS)
+  future_weth_position_size = npf.fv(daily_interest_rate, total_days, 0, -current_weth_position_size) - current_weth_position_size
+  rewards_weth_position_size = future_weth_position_size
   weth_growth = get_change(future_weth_position_size, current_weth_position_size)
   accumulated_returns += future_weth_position_size * future_weth_price
-
 
   # Render
   st.header("WETH Return")
@@ -74,15 +74,25 @@ def calculate_daily_return(symbol, daily_interest_rate, total_days, starting_cap
   
   # Calculate LOOKS return
   for i in range(int(total_days + 1)):
-    period_looks_position_size = npf.fv(daily_interest_rate, i, 0, -starting_capital)
-    total.append(period_looks_position_size)
-    total_in_dolalrs.append(period_looks_position_size * future_price)
+    period_position_size = npf.fv(daily_interest_rate, i, 0, -starting_capital)
+    if symbol == "LOOKS":
+      total.append(period_position_size) 
+      total_in_dolalrs.append(period_position_size * future_price)
 
-    interest_looks_position_size = 0 if i == 0 else period_looks_position_size - total[i-1]
-    interest.append(interest_looks_position_size)
+      interest_looks_position_size = 0 if i == 0 else period_position_size - total[i-1]
+      interest.append(interest_looks_position_size)
 
-    principal_position_size = starting_capital if i == 0 else total[i-1]
-    principal.append(principal_position_size)
+      principal_position_size = starting_capital if i == 0 else total[i-1]
+      principal.append(principal_position_size)
+    else:
+      total.append(period_position_size - starting_capital) 
+      total_in_dolalrs.append((period_position_size - starting_capital) * future_price)
+
+      interest_looks_position_size = 0 if i == 0 else period_position_size - total[i-1] - starting_capital
+      interest.append(interest_looks_position_size)
+
+      principal_position_size = 0 if i == 0 else total[i-1]
+      principal.append(principal_position_size)
 
   st.subheader(symbol + " rewards distribution")
   looks_df = pd.DataFrame(
