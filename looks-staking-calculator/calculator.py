@@ -141,6 +141,7 @@ investment_timeline = st.sidebar.selectbox('Investment Period (Days)', investmen
 if st.sidebar.button("Calculate"):
   daily_compute_looks()
   daily_compute_weth()
-  st.header("Accumulated Returns (LOOK + WETH)")
-  st.metric(label="Accumulated Returns (in USD)", value="$"+ str(round(accumulated_returns,2)))
-
+  st.header("Returns (LOOK + WETH)")
+  col1, col2 = st.columns(2)
+  col1.metric(label="Accumulated Returns (in USD)", value="$"+ str(round(accumulated_returns,2)))
+  col2.metric(label="Average Daily Returns (in USD)", value="$"+str(round((accumulated_returns-capital)/investment_timeline_options_in_days[investment_timeline_options.index(investment_timeline)],2)))
