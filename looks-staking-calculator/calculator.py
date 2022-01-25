@@ -166,19 +166,20 @@ current_weth_price =  st.sidebar.number_input(label='Price of WETH', value=1.0)
 
 st.sidebar.subheader("Future Prices")
 st.sidebar.text("This should be the price at the end of your investment period")
-future_looks_price =  st.sidebar.number_input('Future Price of LOOKS')
-future_weth_price =  st.sidebar.number_input('Future Price of WETH')
+future_looks_price =  st.sidebar.number_input('Future Price of LOOKS', value=1.0)
+future_weth_price =  st.sidebar.number_input('Future Price of WETH', value=1.0)
 
 # User Inputs
 st.sidebar.subheader("Investment")
 capital = st.sidebar.number_input(label='Your Initial Capital ($)', value=1000.0)
 investment_timeline = st.sidebar.selectbox('Investment Period (Days)', investment_timeline_options)
+start_date = st.sidebar.date_input('Investment start date')
 
 st.subheader("Key Assumption")
 st.text("We are assuming that there will be a constant number of stakers throughout the period.")
 
 if st.sidebar.button("Calculate"):
-  interest_rate = calculate_rewards_schedule(date.today(), looks_apr, weth_apr)
+  interest_rate = calculate_rewards_schedule(start_date, looks_apr, weth_apr)
   daily_compute_looks()
   daily_compute_weth()
   st.header("Profit (LOOK + WETH)")
