@@ -180,8 +180,8 @@ current_weth_price =  st.sidebar.number_input(label='Price of WETH', value=cmc_e
 
 st.sidebar.subheader("Future Prices")
 st.sidebar.text("This should be the price at the end of your investment period")
-future_looks_price =  st.sidebar.number_input('Future Price of LOOKS', value=1.0)
-future_weth_price =  st.sidebar.number_input('Future Price of WETH', value=1.0)
+future_looks_price =  st.sidebar.number_input('Future Price of LOOKS', value=cmc_looks_rate)
+future_weth_price =  st.sidebar.number_input('Future Price of WETH', value=cmc_eth_rate)
 
 # User Inputs
 st.sidebar.subheader("Investment")
