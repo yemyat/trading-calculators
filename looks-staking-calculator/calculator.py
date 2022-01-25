@@ -16,7 +16,7 @@ cmc_looks_rate=0.0
 cmc_eth_rate=0.0
 
 try:
-  cmc = CoinMarketCapAPI(st.secrets('CMC_KEY'))
+  cmc = CoinMarketCapAPI(st.secrets['CMC_KEY'])
   cmc_looks_rate = cmc.cryptocurrency_quotes_latest(symbol='LOOKS').data['LOOKS']['quote']['USD']['price']
   cmc_eth_rate = cmc.cryptocurrency_quotes_latest(symbol='ETH').data['ETH']['quote']['USD']['price']
 except CoinMarketCapAPIError:
