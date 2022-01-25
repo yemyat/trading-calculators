@@ -156,7 +156,7 @@ st.title("LooksRare (LOOKS) Auto-compounding Staking Rewards Calculator")
 
 # Configuration
 st.sidebar.header("Base Assumptions")
-st.sidebar.subheader("APR")
+st.sidebar.subheader("Initial APR")
 looks_apr =  st.sidebar.number_input(label='LOOKS APR (%)', value=269.72)
 weth_apr =  st.sidebar.number_input(label='WETH APR (%)', value=388.58)
 
@@ -173,6 +173,9 @@ future_weth_price =  st.sidebar.number_input('Future Price of WETH')
 st.sidebar.subheader("Investment")
 capital = st.sidebar.number_input(label='Your Initial Capital ($)', value=1000.0)
 investment_timeline = st.sidebar.selectbox('Investment Period (Days)', investment_timeline_options)
+
+st.subheader("Key Assumption")
+st.text("We are assuming that there will be a constant number of stakers throughout the period.")
 
 if st.sidebar.button("Calculate"):
   interest_rate = calculate_rewards_schedule(date.today(), looks_apr, weth_apr)
