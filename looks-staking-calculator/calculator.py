@@ -5,7 +5,6 @@ import numpy_financial as npf
 import pandas as pd
 from datetime import date
 from coinmarketcapapi import CoinMarketCapAPI, CoinMarketCapAPIError
-from decouple import config
 
 # Variables
 investment_timeline_options = ('1 day', '7 days', '14 days', '30 days', '60 days', '90 days', '6 months', '12 months', '18 months', '24 months', '36 months')
@@ -17,7 +16,7 @@ cmc_looks_rate=0.0
 cmc_eth_rate=0.0
 
 try:
-  cmc = CoinMarketCapAPI(config('CMC_KEY'))
+  cmc = CoinMarketCapAPI(st.secrets('CMC_KEY'))
   cmc_looks_rate = cmc.cryptocurrency_quotes_latest(symbol='LOOKS').data['LOOKS']['quote']['USD']['price']
   cmc_eth_rate = cmc.cryptocurrency_quotes_latest(symbol='ETH').data['ETH']['quote']['USD']['price']
 except CoinMarketCapAPIError:
