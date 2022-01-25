@@ -1,1 +1,3 @@
 numpy-financial
+python-coinmarketcap
+python-decouple

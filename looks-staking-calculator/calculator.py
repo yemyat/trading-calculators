@@ -4,7 +4,8 @@ import numpy as np
 import numpy_financial as npf
 import pandas as pd
 from datetime import date
-
+from coinmarketcapapi import CoinMarketCapAPI, CoinMarketCapAPIError
+from decouple import config
 
 # Variables
 investment_timeline_options = ('1 day', '7 days', '14 days', '30 days', '60 days', '90 days', '6 months', '12 months', '18 months', '24 months', '36 months')
@@ -12,6 +13,16 @@ investment_timeline_options_in_days = (1.0, 7.0, 14.0, 30.0, 60.0, 90.0, 180.0, 
 interest_rate = {}
 accumulated_returns = 0.0
 accumulated_interest = 0.0
+cmc_looks_rate=0.0
+cmc_eth_rate=0.0
+
+try:
+  cmc = CoinMarketCapAPI(config('CMC_KEY'))
+  cmc_looks_rate = cmc.cryptocurrency_quotes_latest(symbol='LOOKS').data['LOOKS']['quote']['USD']['price']
+  cmc_eth_rate = cmc.cryptocurrency_quotes_latest(symbol='ETH').data['ETH']['quote']['USD']['price']
+except CoinMarketCapAPIError:
+  cmc_looks_rate=1.0
+  cmc_eth_rate=1.0
 
 def calculate_rewards_schedule(start_date, starting_looks_apr, starting_weth_apr):
   genesis_date = date(2022, 1, 11)
@@ -165,8 +176,8 @@ looks_apr =  st.sidebar.number_input(label='LOOKS APR (%)', value=269.72)
 weth_apr =  st.sidebar.number_input(label='WETH APR (%)', value=388.58)
 
 st.sidebar.subheader("Current Prices")
-current_looks_price =  st.sidebar.number_input(label='Price of LOOKS', value=1.0)
-current_weth_price =  st.sidebar.number_input(label='Price of WETH', value=1.0)
+current_looks_price =  st.sidebar.number_input(label='Price of LOOKS', value=cmc_looks_rate)
+current_weth_price =  st.sidebar.number_input(label='Price of WETH', value=cmc_eth_rate)
 
 st.sidebar.subheader("Future Prices")
 st.sidebar.text("This should be the price at the end of your investment period")
@@ -191,6 +202,10 @@ if st.sidebar.button("Calculate"):
 
   total_days = investment_timeline_options_in_days[investment_timeline_options.index(investment_timeline)]
   col1.metric(label="Balance (in USD)", value="$"+str(round(accumulated_returns, 2)))
-  col2.metric(label="Profit (in USD)", value="$"+ str(round(accumulated_returns-capital,2)))
+
+  profit = accumulated_returns-capital
+  profit_margin = (profit / accumulated_returns)*100
+  
+  col2.metric(label="Profit (in USD)", value="$"+ str(round(profit,2)), delta=str(round(profit_margin,2)) + "%")
   col3.metric(label="Average Daily Interest (in USD)", value="$"+str(round(accumulated_interest/total_days, 2)))
   col4.metric(label="No of Days to require enough profit to cover capital", value=str(round(capital/(accumulated_interest/total_days),0)) + " days")
