@@ -15,6 +15,8 @@ accumulated_interest = 0.0
 cmc_looks_rate=0.0
 cmc_eth_rate=0.0
 
+st.set_page_config(layout="wide")
+
 try:
   cmc = CoinMarketCapAPI(st.secrets['CMC_KEY'])
   cmc_looks_rate = cmc.cryptocurrency_quotes_latest(symbol='LOOKS').data['LOOKS']['quote']['USD']['price']
@@ -99,14 +101,13 @@ def calculate_daily_return(symbol, total_days, starting_capital, current_price, 
   if symbol == "LOOKS":
     # Render
     st.header("LOOKS Return")
-    st.text("Calculating the amount of LOOKS rewards that you will get from staking")
     col1, col2, col3 = st.columns(3)
     col1.metric(label="Principal", value=str(round(total[0],2)) + " LOOKS")
     col2.metric(label="Rewards", value=str(round(interest[len(total)-1],2)) + " LOOKS")
     col3.metric(label="Total", value=str(round(total[len(total)-1],2)) + " LOOKS")
 
     st.subheader("LOOKS Return in $")
-    st.text("Calculating the value of total LOOKS if the price of LOOKS is at $" + str(future_price))
+    st.text("Calculating the value of total LOOKS if the price of LOOKS is at $" + str(round(future_price,2)))
     col1, col2, col3 = st.columns(3)
     col1.metric(label="Principal", value="$"+str(round(total[0] * current_price,2)))
     col2.metric(label="Rewards", value="$"+str(round(interest[len(total)-1] * future_price,2)))
@@ -128,14 +129,13 @@ def calculate_daily_return(symbol, total_days, starting_capital, current_price, 
     
     # Render
     st.header("WETH Return")
-    st.text("Calculating the amount of WETH rewards that you will get from staking")
     col1, col2, col3 = st.columns(3)
     col1.metric(label="Principal", value="0 WETH")
     col2.metric(label="Rewards", value=str(round(interest[len(total)-1],2)) + " WETH")
     col3.metric(label="Total", value=str(round(total[len(total)-1],2)) + " WETH")
 
     st.subheader("WETH Return in $")
-    st.text("Calculating the value of total LOOKS if the price of WETH is at $" + str(future_price))
+    st.text("Calculating the value of total LOOKS if the price of WETH is at $" + str(round(future_price,2)))
     col1, col2, col3 = st.columns(3)
     col1.metric(label="Principal", value="$0")
     col2.metric(label="Rewards", value="$"+str(round(interest[len(total)-1] * future_price,2)))
@@ -171,6 +171,7 @@ st.title("LooksRare (LOOKS) Auto-compounding Staking Rewards Calculator")
 # Configuration
 st.sidebar.header("Base Assumptions")
 st.sidebar.subheader("Initial APR")
+st.sidebar.markdown("You can get this info from [here](https://looksrare.org/rewards).")
 looks_apr =  st.sidebar.number_input(label='LOOKS APR (%)', value=269.72)
 weth_apr =  st.sidebar.number_input(label='WETH APR (%)', value=388.58)
 
@@ -179,18 +180,20 @@ current_looks_price =  st.sidebar.number_input(label='Price of LOOKS', value=cmc
 current_weth_price =  st.sidebar.number_input(label='Price of WETH', value=cmc_eth_rate)
 
 st.sidebar.subheader("Future Prices")
-st.sidebar.text("This should be the price at the end of your investment period")
+st.sidebar.markdown("This should be the price at the end of your investment period.")
 future_looks_price =  st.sidebar.number_input('Future Price of LOOKS', value=cmc_looks_rate)
 future_weth_price =  st.sidebar.number_input('Future Price of WETH', value=cmc_eth_rate)
 
 # User Inputs
 st.sidebar.subheader("Investment")
 capital = st.sidebar.number_input(label='Your Initial Capital ($)', value=1000.0)
-investment_timeline = st.sidebar.selectbox('Investment Period (Days)', investment_timeline_options)
+investment_timeline = st.sidebar.selectbox(label='Investment Period (Days)', options=investment_timeline_options, index=3)
 start_date = st.sidebar.date_input('Investment start date')
 
+# Render page
 st.subheader("Key Assumption")
-st.text("We are assuming that there will be a constant number of stakers throughout the period.")
+st.markdown("- We are assuming that there will be a constant number of stakers throughout the period.")
+st.markdown("- We are also assuming that the staking rewards schedule would not be changed. You can learn more about the schedule [here](https://docs.looksrare.org/about/rewards/looks-staking-rewards#how-many-looks-tokens-are-allocated-to-looks-stakers).")
 
 if st.sidebar.button("Calculate"):
   interest_rate = calculate_rewards_schedule(start_date, looks_apr, weth_apr)
